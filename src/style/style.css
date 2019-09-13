@@ -1,0 +1,9 @@
+#leftPane {
+    -fx-background-color:  #baffe1;
+}
+#rightPane {
+    -fx-background-color: #fef4b2;
+}
+#bottomPane {
+    -fx-background-color: #35f66a;
+}
