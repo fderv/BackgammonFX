@@ -3,6 +3,7 @@ package Game;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Group;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -318,13 +319,20 @@ public class Controller implements Initializable {
                             if (--diceNumberCount == 0)
                                 otherPlayersTurn();
                             break;
-                        case SAFE:
-                            break;
                     }
                 } catch (Exception ex) {
                     checker.abortMove();
                     ex.printStackTrace();
                 }
+            }
+            if (diceNumberCount > 0 && !checkForNextMoveAvailable()) {
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("No moves");
+                alert.setHeaderText(null);
+                alert.setContentText("You cannot play, you pass");
+                alert.showAndWait();
+                otherPlayersTurn();
+                diceNumbers.clear();
             }
         });
         checkerGroup.getChildren().add(checker);
@@ -334,30 +342,8 @@ public class Controller implements Initializable {
 
         BGBar checkersBar = (checker.getSide() == BROWN) ? (brownBar) : (whiteBar);
 
-        HashMap<BGPoint, Integer> pointsAllowed = new HashMap<>();
-        for (int i : diceNumbers) {
-            int n;
-            if (checker.getBar() != null) {
-                int starting = (checker.getSide() == whiteSide) ? (0) : (25);
-                n = starting + (checker.getSide().moveDir * i);
-            } else {
-                n = checker.getPoint().getPointOrder() + (checker.getSide().moveDir * i);
-            }
-            if (n > 25 && canGoToSafe(checker.getSide())) {
-                n = 25;
-                BGPoint p = pointList.get(n);
-                pointsAllowed.put(p, i);
-            }
-            else if (n < 0 && canGoToSafe(checker.getSide())) {
-                n = 0;
-                BGPoint p = pointList.get(n);
-                pointsAllowed.put(p, i);
-            }
-            else {
-                BGPoint p = pointList.get(n);
-                pointsAllowed.put(p, i);
-            }
-        }
+        HashMap<BGPoint, Integer> pointsAllowed = getPlayableMoves(checker);
+
         if (pointsAllowed.isEmpty()) {
             return new MoveResult(MoveType.NONE);
         }
@@ -367,7 +353,7 @@ public class Controller implements Initializable {
                 if (checkersBar.isEmpty()) {
                     if ((newPoint.getPointOrder() == 25 || newPoint.getPointOrder() == 0) && canGoToSafe(checker.getSide())) {
                         diceNumbers.remove(Integer.valueOf(pointsAllowed.get(newPoint)));
-                        return new MoveResult(MoveType.SAFE);
+                        return new MoveResult(MoveType.NORMAL);
                     }
                     else if (newPoint.isEmpty() || newPoint.getChecker().getSide() == checker.getSide()) {
                         diceNumbers.remove(Integer.valueOf(pointsAllowed.get(newPoint)));
@@ -420,6 +406,55 @@ public class Controller implements Initializable {
             }
         }
         return new MoveResult(MoveType.NONE);*/
+    }
+
+    private HashMap<BGPoint, Integer> getPlayableMoves(Checker checker) {
+        HashMap<BGPoint, Integer> pointsAllowed = new HashMap<>();
+        for (int i : diceNumbers) {
+            int n;
+            if (checker.getBar() != null) {
+                int starting = (checker.getSide() == whiteSide) ? (0) : (25);
+                n = starting + (checker.getSide().moveDir * i);
+            } else {
+                n = checker.getPoint().getPointOrder() + (checker.getSide().moveDir * i);
+            }
+            if (n > 25 && canGoToSafe(checker.getSide())) {
+                n = 25;
+                BGPoint p = pointList.get(n);
+                pointsAllowed.put(p, i);
+            }
+            else if (n < 0 && canGoToSafe(checker.getSide())) {
+                n = 0;
+                BGPoint p = pointList.get(n);
+                pointsAllowed.put(p, i);
+            }
+            else if (n > 0 && n < 25){
+                BGPoint p = pointList.get(n);
+                if (p.getCheckerList().size() < 2 || p.getChecker().getSide() == checker.getSide()) {
+                    pointsAllowed.put(p, i);
+                }
+            }
+        }
+        return pointsAllowed;
+    }
+
+    private boolean checkForNextMoveAvailable() {
+        Side side = (whiteSide.isToPlay) ? (WHITE) : (BROWN);
+        BGBar bar = (side == WHITE) ? (whiteBar) : (brownBar);
+        if (!bar.isEmpty()) {
+            if (getPlayableMoves(bar.getChecker()).isEmpty()) {
+                return false;
+            }
+        }
+
+        for (BGPoint bgp : pointList) {
+            if (!bgp.isEmpty() && bgp.getChecker().getSide() == side) {
+                if (!getPlayableMoves(bgp.getChecker()).isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private boolean canGoToSafe(Side side) {
