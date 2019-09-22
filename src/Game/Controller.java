@@ -12,6 +12,7 @@ import javafx.scene.shape.Circle;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.ThreadLocalRandom;
@@ -298,28 +299,9 @@ public class Controller implements Initializable {
                 try {
                     int newPointIndex = toBoard(checker.getLayoutX(), checker.getLayoutY());
 
-                    ArrayList<Integer> indicesOfPointsAllowed = new ArrayList<>();
-                    for (int i : diceNumbers) {
-                        int n;
-                        if (checker.getBar() != null) {
-                            int starting = (checker.getSide() == whiteSide) ? (25) : (0);
-                            n = starting + (checker.getSide().moveDir * i);
-                        } else {
-                            n = checker.getPoint().getPointOrder() + (checker.getSide().moveDir * i);
-                        }
-                        indicesOfPointsAllowed.add(n);
-
-                    }
-
-
                     BGPoint newPoint = pointList.get(newPointIndex);
+                    MoveResult result = tryMove(checker, newPoint);
 
-                    MoveResult result = new MoveResult(MoveType.NONE);
-
-                    if (indicesOfPointsAllowed.contains(newPointIndex) && dicesRolled) {
-                        result = tryMove(checker, newPoint);
-                        diceNumbers.remove(Integer.valueOf((newPointIndex - (checker.getPoint().getPointOrder()))/checker.getSide().moveDir));
-                    }
                     switch (result.getMoveType()) {
                         case NONE:
                             checker.abortMove();
@@ -341,7 +323,7 @@ public class Controller implements Initializable {
                     }
                 } catch (Exception ex) {
                     checker.abortMove();
-                    //ex.printStackTrace();
+                    ex.printStackTrace();
                 }
             }
         });
@@ -350,12 +332,79 @@ public class Controller implements Initializable {
 
     private MoveResult tryMove(Checker checker, BGPoint newPoint) {
 
-        BGBar _bar = (checker.getSide() == BROWN) ? (brownBar) : (whiteBar);
+        BGBar checkersBar = (checker.getSide() == BROWN) ? (brownBar) : (whiteBar);
 
+        HashMap<BGPoint, Integer> pointsAllowed = new HashMap<>();
+        for (int i : diceNumbers) {
+            int n;
+            if (checker.getBar() != null) {
+                int starting = (checker.getSide() == whiteSide) ? (0) : (25);
+                n = starting + (checker.getSide().moveDir * i);
+            } else {
+                n = checker.getPoint().getPointOrder() + (checker.getSide().moveDir * i);
+            }
+            if (n > 25 && canGoToSafe(checker.getSide())) {
+                n = 25;
+                BGPoint p = pointList.get(n);
+                pointsAllowed.put(p, i);
+            }
+            else if (n < 0 && canGoToSafe(checker.getSide())) {
+                n = 0;
+                BGPoint p = pointList.get(n);
+                pointsAllowed.put(p, i);
+            }
+            else {
+                BGPoint p = pointList.get(n);
+                pointsAllowed.put(p, i);
+            }
+        }
+        if (pointsAllowed.isEmpty()) {
+            return new MoveResult(MoveType.NONE);
+        }
 
+        if (checker.getSide().isToPlay && dicesRolled && checker.getPoint() != newPoint) {
+            if (pointsAllowed.containsKey(newPoint)) {
+                if (checkersBar.isEmpty()) {
+                    if ((newPoint.getPointOrder() == 25 || newPoint.getPointOrder() == 0) && canGoToSafe(checker.getSide())) {
+                        diceNumbers.remove(Integer.valueOf(pointsAllowed.get(newPoint)));
+                        return new MoveResult(MoveType.SAFE);
+                    }
+                    else if (newPoint.isEmpty() || newPoint.getChecker().getSide() == checker.getSide()) {
+                        diceNumbers.remove(Integer.valueOf(pointsAllowed.get(newPoint)));
+                        return new MoveResult(MoveType.NORMAL);
+                    }
+                    else if (newPoint.getCheckerCount() == 1 && newPoint.getChecker().getSide() != checker.getSide()) {
+                        diceNumbers.remove(Integer.valueOf(pointsAllowed.get(newPoint)));
+                        return new MoveResult(MoveType.KILL, newPoint.getChecker());
+                    } else {
+                        return new MoveResult(MoveType.NONE);
+                    }
+                }
+                else {
+                    if (checker.getBar() != null) {
+                        if (newPoint.isEmpty() || newPoint.getChecker().getSide() == checker.getSide()) {
+                            diceNumbers.remove(Integer.valueOf(pointsAllowed.get(newPoint)));
+                            return new MoveResult(MoveType.NORMAL);
+                        }
+                        else if (newPoint.getCheckerCount() == 1 && newPoint.getChecker().getSide() != checker.getSide()) {
+                            diceNumbers.remove(Integer.valueOf(pointsAllowed.get(newPoint)));
+                            return new MoveResult(MoveType.KILL, newPoint.getChecker());
+                        } else {
+                            return new MoveResult(MoveType.NONE);
+                        }
+                    }
+                    else {
+                        return new MoveResult(MoveType.NONE);
+                    }
+                }
+            }
+        }
+        return new MoveResult(MoveType.NONE);
+/*
+        if (checker.getSide().isToPlay && (checkersBar.isEmpty() || checker.getBar() != null)) {
 
-        if (checker.getSide().isToPlay && (_bar.isEmpty() || checker.getBar() != null)) {
             if ((newPoint.isEmpty() || newPoint.getChecker().getSide() == checker.getSide()) && newPoint != checker.getPoint()) {
+
                 if ((newPoint.getPointOrder() == 25 || newPoint.getPointOrder() == 0) && (canGoToSafe(checker.getSide()))) {
                     checker.getSide().checkerLeftOnBoard--;
                     return new MoveResult(MoveType.NORMAL);
@@ -370,7 +419,7 @@ public class Controller implements Initializable {
                 return new MoveResult(MoveType.KILL, newPoint.getChecker());
             }
         }
-        return new MoveResult(MoveType.NONE);
+        return new MoveResult(MoveType.NONE);*/
     }
 
     private boolean canGoToSafe(Side side) {

@@ -43,7 +43,7 @@ public class Checker extends Circle {
             if (this.point == null && this.bar != null) {
                 relocate(e.getSceneX() - mouseX + oldX, e.getSceneY() - mouseY + oldY);
             }
-            else if (this.point != null && this.point.getChecker() == this) {
+            else if (this.point != null && this.point.getChecker() == this && this.point.getPointOrder() != 25 && this.point.getPointOrder() != 0) {
                 relocate(e.getSceneX() - mouseX + oldX, e.getSceneY() - mouseY + oldY);
             }
         });
