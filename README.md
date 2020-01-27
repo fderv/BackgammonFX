@@ -1,2 +1,2 @@
 # BackgammonFX
-![Alt Text](https://imgur.com/a/BaiblFg)
+![Screenshot](https://imgur.com/a/BaiblFg)
